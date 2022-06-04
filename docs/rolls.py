@@ -1,18 +1,28 @@
 #!/usr/bin/python3
 
-# Version 2.0 (20220528)
+# Version 2.1 (20220604)
 
 # Usage:
 #
-#   echo 123456123456 | python3 rolls.py
+#	echo 123456123456 | python3 rolls.py
 #
-# - Requires python3 and nothing else!
-# - This file is <https://coldcardwallet.com/docs/rolls.py>
-# - Public domain.
+# Test:
+#	echo "1234566543211234561234561234561234561234561234561234561234561234566543211234561234561234561234561234561234561234561234563456123456123456123456123456123456" | ./rolls-v3.py
+# Result:
+#	home frequent refuse hand spider pet egg misery brave custom comic surface refuse hand spider pet egg misery crucial hand spider pet egg letter
 #
-# - Review at https://medium.com/coinmonks/generating-device-seeds-using-dice-894082d43aea
+#	Requires python3 and nothing else!
+#	This file is <https://coldcardwallet.com/docs/rolls.py>
+#	Public domain.
+#
+# Review:
+#	https://medium.com/coinmonks/generating-device-seeds-using-dice-894082d43aea
+# Links:
+#	https://www.binaryhexconverter.com/binary-to-hex-converter
+#	https://github.com/iancoleman/bip39/issues/435
 
 from hashlib import sha256
+#import binascii
 #from pathlib import Path
 
 # Binary sets for entropy calculations
@@ -24,57 +34,76 @@ print('Welcome to BIP39 mnemonic seed phrase generator.\n')
 print("Enter a series of dice [1..6] combinations (~170 for 256bit of unbiased entropy):")
 # Read input, remove whitespace around it
 r = input().strip()
-print('\nDice input [Length: %d]:\n%s\n' % (len(r),r))
+print('\nDice input [%d]:\n%s\n' % (len(r),r))
 
 # Convert dice combinations to base6 (iancoleman style, 6 -> 0)
 # and build unbiased binary base
-r6=""
+s6=""
 b6=""
 for n in range(0, len(r)):
-    if r[n] == "6":
-        i6="0"
-    else:
-        i6=int(r[n])
-    r6+=str(i6)
-    b6+=BinBits[int(i6)]
-r=str(r6)
-print('Base6 value of input:\n%s\n' % r6)
-print('Binary entropy bias base:\n%s\n' % b6)
+	if r[n] == "6":
+		t6="0"
+	else:
+		t6=int(r[n])
+	s6+=str(t6)
+	b6+=BinBits[int(t6)]
 
-# Calc sha256
-re = r.encode()
-#print('Input encoded for hash:\n%s\n' % re)
-h = sha256(re).digest()
+r=s6
+i6=int(s6,6)
+b6e=i6.bit_length()
+r6=str(i6)
+be=len(b6)
 
-# Show hash and warn if input is empty
-empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-if h.hex() == empty:
-    print('WARNING: Input is empty. Using well known hash as a seed base:\n%s\n' % h.hex())
-else:
-    print('Seed base is a sha256 hash of ASCII encoded base6 input:\n%s\n' % h.hex())
+print('Dice6 str value [%d]:\n%s\n' % (len(s6), s6))
+print('Base6 str value [%d]:\n%s\n' % (len(r6), r6))
+print('Base6 int value:\n%d\n' % i6)
+print('Binary entropy raw value [%d]:\n%s\n' % (b6e, bin(i6)))
+print('Binary entropy unbiased value [%d]:\n%s\n' % (be, b6))
 
 # Inform about entropy level, warn if it is low
-be = len(b6)
-if be < 256:
-    print('WARNING: Input provides only %d bits of unbiased entropy\n' % be)
+if ((be < 256) or (b6e < 256)):
+	print('WARNING: Input provides only %d bits of unbiased entropy.\n' % be)
+
+	print('Using SHA256 hash of ASCII encoded base6 input to strech entropy to 256bit.\n')
+	h = sha256(r.encode()).digest()
+
+	# Show hash and warn if input is empty
+	if h.hex() == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855":
+		print('WARNING: Input is empty. Using well known hash as a seed base')
 else:
-    print('Input provides %d bits of unbiased entropy\n' % be)
+	print('Input provides %d bits of raw and %d bits of unbiased entropy\n' % (b6e, be))
+
+	# Use unbiased entropy
+	ic=int(b6,2)
+	h=ic.to_bytes(32, byteorder='big')
+	print('Using first 256bits of bias entropy (bin) [%d] <%s>:\n%s\n' % (len(b6), type(b6), b6))
+
+	# Use raw entropy (temporary disabled due to possible entropy anomalies)
+	#b=bin(i6)
+	#b=b[2:]
+	#bc=b[0:256]
+	#ic=int(bc,2)
+	#h=ic.to_bytes(32, byteorder='big')
+	#print('Using first 256bits of raw entropy (bin) [%d] <%s>:\n%s\n' % (len(bc), type(bc), bc))
 
 # Align to BIP39 length to derive 24 words (last word is not final)
-v = int.from_bytes(h, 'big') << 8
+print('Entropy base (bytes) [%d] <%s>:\n%s\n' % (len(h), type(h), h))
+print('Entropy base (hex) <%s>:\n%s\n' % (type(h), h.hex()))
+
+v = int.from_bytes(h, byteorder='big') << 8
 print('BIP39 seed (aligned to 24 words):\n%x\n' % v)
 print('Calculating words using modulus division by the size of the dictionary (2048)')
 print(' # |                      division remainder                          | word')
 w = []
 for i in range(24):
-    v, m = divmod(v, 2048)
-    print('%2d | %64x | %4d' % (24-i, v, m))
-    w.insert(0, m)
+	v, m = divmod(v, 2048)
+	print('%2d | %64x | %4d' % (24-i, v, m))
+	w.insert(0, m)
 assert not v
 
-# final 8 bits of the last word are a checksum
+# Final 8 bits of the last word are a checksum
 w[-1] |= sha256(h).digest()[0]
-print('(Adjusting last word to %4d after injecting checksum)\n' % w[-1])
+print('(Adjusting last (24th) word to %4d after injecting checksum)\n' % w[-1])
 
 # English wordlist
 #wl = Path('bip39-english.txt').read_text().replace('\n', ' ').split()
