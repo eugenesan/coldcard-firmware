@@ -28,14 +28,30 @@ from hashlib import sha256
 # Binary unbiased bit sets for Dice6 entropy calculations
 BinBits = ["00","01","10","11","0","1"]
 
-print('Welcome to BIP39 mnemonic seed phrase generator.\n')
+class bcolors:
+	BLUE = '\033[94m'
+	CYAN = '\033[96m'
+	GREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
+print(f'{bcolors.GREEN}Welcome to BIP39 mnemonic seed phrase generator.{bcolors.ENDC}\n')
 
 # Read input, remove whitespace around it
-print('Enter a series of dice [1..6] combinations (on average 170 rolls are requried:')
+print('Enter a series of dice [1..6] roll results (on average 170 rolls are requried:')
 r = input().strip()
 
 # Print input in case it came from stdin
-print('\nDice6 input [%d]:\n%s\n' % (len(r),r))
+#print('\nDice6 input [%d]:\n%s\n' % (len(r),r))
+print('\n')
+
+# Abort if input is empty
+if r == "":
+	print(f'{bcolors.FAIL}Input is empty.{bcolors.ENDC}')
+	exit(255)
 
 # Convert dice combinations to base6 (iancoleman style, 6 -> 0) and build unbiased binary base
 s6=""
@@ -57,43 +73,39 @@ be=len(b6)
 print('Dice6 filtered value [%d] <%s>:\n%s\n' % (len(s6), type(s6), s6))
 #print('Base6 str value [%d]:\n%s\n' % (len(r6), r6))
 #print('Base6 int value:\n%d\n' % i6)
-print('Binary entropy raw value [%d] <%s>:\n%s\n' % (b6e, type(i6), bin(i6)))
-print('Binary entropy unbiased value [%d] <%s>:\n%s\n' % (be, type(b6), b6))
+#print('Binary entropy raw [%d] <%s>:\n%s\n' % (b6e, type(i6), bin(i6)))
+print('Binary unbiased entropy [%d] <%s>:\n%s\n' % (be, type(b6), b6))
 
 # Check unbiased entropy level and choose input entropy method
 if ((be < 256) or (b6e < 256)):
-	print('WARNING: Input provides only %d bits of unbiased entropy.' % be)
-	print('Will use SHA256 hash of ASCII encoded base6 input to strech entropy to 256bit.')
-	print('Using that method might result is severerly degraded entropy.')
-	print('We recommend adding ~%d more dice rolls.\n' % int(round(256-(be))/1.66))
+	print(f'{bcolors.UNDERLINE}{bcolors.WARNING}Warning: Input provides only %d bits of unbiased entropy.{bcolors.ENDC}' % be)
+	print(f'{bcolors.UNDERLINE}{bcolors.WARNING}Will use SHA256 hash of ASCII encoded base6 input to strech entropy to 256bit.{bcolors.ENDC}')
+	print(f'{bcolors.UNDERLINE}{bcolors.WARNING}Using that method might result is severerly degraded entropy.{bcolors.ENDC}')
+	print(f'{bcolors.UNDERLINE}{bcolors.WARNING}It is recommended to add ~%d more dice rolls.{bcolors.ENDC}\n' % int(round(256-(be))/1.66))
 	h = sha256(r.encode()).digest()
-
-	# Show hash and warn if input is empty
-	if h.hex() == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855":
-		print('WARNING: Input is empty. Using well known hash as a seed base')
 else:
-	print('Input provides %d bits of raw and %d bits of unbiased entropy\n' % (b6e, be))
+	print(f'{bcolors.UNDERLINE}{bcolors.WARNING}Input provides %d bits of raw and %d bits of unbiased entropy.{bcolors.ENDC}\n' % (b6e, be))
 
 	# Use unbiased entropy
 	ic=int(b6,2)
 	h=ic.to_bytes(32, byteorder='big')
-	print('Using first 256bits of unbiased entropy [%d] <%s>:\n%s\n' % (len(b6), type(b6), b6))
+	#print('Using first 256bits of unbiased entropy [%d] <%s>:\n%s\n' % (len(b6), type(b6), b6))
 
 #print('Entropy base (bytes) [%d] <%s>:\n%s\n' % (len(h), type(h), h))
 
 # Padding entropy to BIP39 length and injecting 8bits of checksum to derive 24 words
-print('Entropy base (hex) <%s>:\n%s\n' % (type(h), h.hex()))
+#print('Entropy base (hex) <%s>:\n%s\n' % (type(h), h.hex()))
 v = int.from_bytes(h, byteorder='big') << 8
-print('BIP39 seed (padded with 8bits to 24 words):\n%x\n' % v)
+#print('BIP39 seed (padded with 8bits to 24 words):\n%x\n' % v)
 v |= sha256(h).digest()[0]
-print('BIP39 seed (with checksum injected):\n%x\n' % v)
+print('BIP39 seed (padded with 8bits to 24 words with and checksum injected):\n%x' % v)
 
-print('Calculating words using modulus division by the size of the dictionary (2048)')
-print(' # |                      division remainder                          | word')
+#print('Calculating words using modulus division by the size of the dictionary (2048)')
+#print(' # |                      division remainder                          | word')
 w = []
 for i in range(24):
 	v, m = divmod(v, 2048)
-	print('%2d | %64x | %4d' % (24-i, v, m))
+	#print('%2d | %64x | %4d' % (24-i, v, m))
 	w.insert(0, m)
 assert not v
 
@@ -272,9 +284,9 @@ wonder wood wool word work world worry worth wrap wreck wrestle wrist write
 wrong yard year yellow you young youth zebra zero zone zoo'''.split()
 
 # Print index number and each word (24)
-print('\nWords of your mnemonic seed phrase are:')
-print('\n'.join('%2d | %s' % (n+1, wl[i]) for n, i in enumerate(w)))
+print(f'\n{bcolors.GREEN}Words of your mnemonic seed phrase are:{bcolors.ENDC}')
+print('\n'.join(f'%2d | {bcolors.CYAN}%s{bcolors.ENDC}' % (n+1, wl[i]) for n, i in enumerate(w)))
 
 print('\nYou can add up to 100 ASCII (32-126) characters as a seed passphrase (AKA 25th word).\n')
-print('Good luck and may the Sat be with you!')
 
+#print('Good luck and may the Sat be with you!')
